@@ -25,5 +25,4 @@ plugins:
 ```
 
 > [!IMPORTANT]  
-> This plugin will recursively scan folders for the first markdown document.
 > If a subpath contains no markdown, it will not contain a hyperlink in the generated breadcrumb. A tooltip will be displayed upon hover.
