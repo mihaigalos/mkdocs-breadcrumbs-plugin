@@ -1,9 +1,7 @@
 import os
 import logging
-
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
-
 
 class BreadCrumbs(BasePlugin):
 
@@ -23,21 +21,9 @@ class BreadCrumbs(BasePlugin):
         self.logger.setLevel(numeric_level)
         self.logger.info(f'Log level set to {log_level}')
 
-    def _get_first_markdown_file(self, dir_path):
-        for root, _, files in os.walk(dir_path):
-            for file in sorted(files):
-                if file.endswith(".md"):
-                    return os.path.join(root, file)
-        return None
-
-    def _get_first_document(self, config, ref_location):
+    def _is_valid_markdown_file(self, config, ref_location):
         ref_path = os.path.join(config['docs_dir'], ref_location)
-        if os.path.isdir(ref_path):
-            first_md_file = self._get_first_markdown_file(ref_path)
-            if first_md_file:
-                ref_location = os.path.relpath(first_md_file, config['docs_dir']).replace('\\', '/')
-                ref_location = os.path.splitext(ref_location)[0]
-        return ref_location
+        return os.path.isfile(ref_path) and ref_path.endswith(".md")
 
     def _get_base_url(self, config):
         site_url = config.get('site_url', '').rstrip('/')
@@ -59,37 +45,40 @@ class BreadCrumbs(BasePlugin):
         breadcrumbs = []
         pos_start_substring = 0
 
-        while slashes > 0:
+        while slashes >= 0:
             pos_slash = page.url.find("/", pos_start_substring + 1)
+            if pos_slash == -1:
+                pos_slash = len(page.url)
             ref_name = page.url[pos_start_substring:pos_slash]
             ref_location = page.url[:pos_slash]
 
-            if pos_slash != -1:
-                ref_location = self._get_first_document(config, ref_location)
-            else:
-                ref_location = page.url
-
-            self.logger.debug(f"page.url: {page.url} ref_name: {ref_name} ref_location: {ref_location}, slashes: {slashes}")
-
-            if ref_name:
+            if self._is_valid_markdown_file(config, ref_location + ".md"):
                 if self.base_url:
                     crumb = f"[{ref_name}](/{self.base_url}/{ref_location}/)"
                 else:
                     crumb = f"[{ref_name}](/{ref_location}/)"
+            else:
+                crumb = ref_name  # Non-clickable breadcrumb
+
+            self.logger.debug(f"page.url: {page.url} ref_name: {ref_name} ref_location: {ref_location}, slashes: {slashes}")
+
+            if ref_name:
                 breadcrumbs.append(crumb)
 
             pos_start_substring = pos_slash + 1
             slashes -= 1
 
-        if page.url:
-            current_page = page.url.split("/")[-1]
-            if current_page:
-                breadcrumbs.append(current_page)
+        current_page = page.url.split("/")[-1].replace('.md', '')
+        if current_page:
+            breadcrumbs.append(current_page)
 
-        breadcrumb_str = self.config['delimiter'].join(breadcrumbs)
+        # Join the breadcrumbs with the delimiter
         home_breadcrumb = f"[Home](/{self.base_url}/)" if self.base_url else "[Home](/)"
-
-        breadcrumb_str = home_breadcrumb + (self.config['delimiter'] + breadcrumb_str if breadcrumb_str else "")
+        if breadcrumbs:
+            breadcrumb_str = self.config['delimiter'].join(breadcrumbs)
+            breadcrumb_str = home_breadcrumb + self.config['delimiter'] + breadcrumb_str
+        else:
+            breadcrumb_str = home_breadcrumb
 
         return breadcrumb_str + "\n" + markdown
 
