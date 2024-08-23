@@ -22,3 +22,7 @@ plugins:
       log_level: "DEBUG"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
       delimiter: " / "  # separator between sections
 ```
+
+> [!IMPORTANT]  
+> This plugin will recursively scan folders for the first markdown document.
+> If a subpath contains no markdown, clicking it in the produce breadcrumb will match the next available document.
