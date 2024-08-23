@@ -4,7 +4,7 @@ Experimental mkdocs location-based breadcrumbs navigation.
 
 These directly get prepended to rendered Markdown.
 
-![example](screenshots/breadcrumbs.png)
+![screenshot](https://github.com/mihaigalos/mkdocs-breadcrumbs-plugin/raw/main/screenshots/mkdocs-breadcrumbs-plugin.png)
 
 ## Setup
 
