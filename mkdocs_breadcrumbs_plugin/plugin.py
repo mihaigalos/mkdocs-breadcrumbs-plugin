@@ -13,7 +13,7 @@ class BreadCrumbs(BasePlugin):
     )
 
     def _setup_logger(self):
-        self.logger = logging.getLogger('mkdocs.plugins.issues')
+        self.logger = logging.getLogger('mkdocs.plugins.breadcrumbs')
         log_level = self.config['log_level'].upper()
         numeric_level = getattr(logging, log_level, None)
         if not isinstance(numeric_level, int):
@@ -21,6 +21,13 @@ class BreadCrumbs(BasePlugin):
         logging.basicConfig(level=numeric_level)
         self.logger.setLevel(numeric_level)
         self.logger.info(f'Log level set to {log_level}')
+
+    def _get_first_markdown_file(self, dir_path):
+        for root, _, files in os.walk(dir_path):
+            for file in sorted(files):
+                if file.endswith(".md"):
+                    return os.path.join(root, file)
+        return None
 
     def _is_valid_markdown_file(self, config, ref_location):
         ref_path = os.path.join(config['docs_dir'], ref_location)
@@ -41,6 +48,34 @@ class BreadCrumbs(BasePlugin):
         self._setup_logger()
         self.base_url = self._get_base_url(config)
 
+    def on_files(self, files, config, **kwargs):
+        docs_dir = config['docs_dir']
+        for dirpath, _, filenames in os.walk(docs_dir):
+            index_path = os.path.join(dirpath, 'index.md')
+            if 'index.md' not in filenames:
+                self._generate_index_page(docs_dir, dirpath)
+
+    def _generate_index_page(self, docs_dir, dirpath):
+        # Construct the index.md content
+        relative_dir = os.path.relpath(dirpath, docs_dir)
+        content_lines = [f"# Index of {relative_dir}", ""]
+        base_url_part = f"/{self.base_url}/" if self.base_url else "/"
+
+        for item in sorted(os.listdir(dirpath)):
+            item_path = os.path.join(dirpath, item)
+            if os.path.isdir(item_path):
+                content_lines.append(f"- [{item}]({base_url_part}{os.path.join(relative_dir, item)}/index.md)")
+            elif item.endswith(".md") and item != "index.md":
+                item_name = os.path.splitext(item)[0]
+                content_lines.append(f"- [{item_name}]({base_url_part}{os.path.join(relative_dir, item)})")
+
+        content = "\n".join(content_lines)
+        index_path = os.path.join(dirpath, 'index.md')
+        with open(index_path, 'w') as f:
+            f.write(content)
+
+        self.logger.info(f"Generated index page: {index_path}")
+
     def on_page_markdown(self, markdown, page, config, files, **kwargs):
         slashes = page.url.count("/")
         breadcrumbs = []
@@ -53,15 +88,10 @@ class BreadCrumbs(BasePlugin):
             ref_name = page.url[pos_start_substring:pos_slash]
             ref_location = page.url[:pos_slash]
 
-            if self._is_valid_markdown_file(config, ref_location + ".md"):
-                if self.base_url:
-                    crumb = f"[{ref_name}](/{self.base_url}/{ref_location}/)"
-                else:
-                    crumb = f"[{ref_name}](/{ref_location}/)"
+            if self.base_url:
+                crumb = f"[{ref_name}](/{self.base_url}/{ref_location}/)"
             else:
-                # Tooltip for non-clickable segment using the user-defined message from config
-                tooltip_message = self.config['tooltip_message']
-                crumb = f'<span title="{tooltip_message}">{ref_name}</span>'
+                crumb = f"[{ref_name}](/{ref_location}/)"
 
             self.logger.debug(f"page.url: {page.url} ref_name: {ref_name} ref_location: {ref_location}, slashes: {slashes}")
 
