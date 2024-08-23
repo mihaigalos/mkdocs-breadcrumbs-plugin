@@ -2,7 +2,7 @@ site_name: One
 
 plugins:
     - search
-    - breadcrumbs:
+    - mkdocs-breadcrumbs-plugin:
         start_depth: 2
 theme:
   name: material

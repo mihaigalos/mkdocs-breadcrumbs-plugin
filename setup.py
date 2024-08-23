@@ -32,7 +32,7 @@ setup(
     packages=find_packages(),
     entry_points={
         'mkdocs.plugins': [
-            'breadcrumbs = mkdocs_breadcrumbs_plugin.plugin:BreadCrumbs'
+            'mkdocs-breadcrumbs-plugin = mkdocs_breadcrumbs_plugin.plugin:BreadCrumbs'
         ]
     }
 )
