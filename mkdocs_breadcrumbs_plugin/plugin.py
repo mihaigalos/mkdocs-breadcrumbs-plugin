@@ -1,8 +1,7 @@
 import os
 import logging
 
-from mkdocs import utils as mkdocs_utils
-from mkdocs.config import config_options, Config
+from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
 
 
@@ -57,31 +56,40 @@ class BreadCrumbs(BasePlugin):
 
     def on_page_markdown(self, markdown, page, config, files, **kwargs):
         slashes = page.url.count("/")
+        breadcrumbs = []
         pos_start_substring = 0
-        breadcrumbs = ""
-        depth = 0
 
         while slashes > 0:
             pos_slash = page.url.find("/", pos_start_substring + 1)
             ref_name = page.url[pos_start_substring:pos_slash]
             ref_location = page.url[:pos_slash]
 
-            ref_location = self._get_first_document(config, ref_location)
-            self.logger.debug(f"page.url: {page.url} ref_name: {ref_name} ref_location: {ref_location} depth: {depth}, slashes: {slashes}")
+            if pos_slash != -1:
+                ref_location = self._get_first_document(config, ref_location)
+            else:
+                ref_location = page.url
 
-            if len(breadcrumbs) > 0:
-                breadcrumbs += self.config['delimiter']
-            if depth > 0:
+            self.logger.debug(f"page.url: {page.url} ref_name: {ref_name} ref_location: {ref_location}, slashes: {slashes}")
+
+            if ref_name:
                 if self.base_url:
-                    breadcrumbs += f"[{ref_name}](/{self.base_url}/{ref_location}/)"
+                    crumb = f"[{ref_name}](/{self.base_url}/{ref_location}/)"
                 else:
-                    breadcrumbs += f"[{ref_name}](/{ref_location}/)"
+                    crumb = f"[{ref_name}](/{ref_location}/)"
+                breadcrumbs.append(crumb)
 
             pos_start_substring = pos_slash + 1
             slashes -= 1
-            depth += 1
 
+        if page.url:
+            current_page = page.url.split("/")[-1]
+            if current_page:
+                breadcrumbs.append(current_page)
+
+        breadcrumb_str = self.config['delimiter'].join(breadcrumbs)
         home_breadcrumb = f"[Home](/{self.base_url}/)" if self.base_url else "[Home](/)"
-        breadcrumbs = home_breadcrumb + self.config['delimiter'] + breadcrumbs if breadcrumbs else home_breadcrumb
-        return breadcrumbs + "\n" + markdown
+
+        breadcrumb_str = home_breadcrumb + (self.config['delimiter'] + breadcrumb_str if breadcrumb_str else "")
+
+        return breadcrumb_str + "\n" + markdown
 
