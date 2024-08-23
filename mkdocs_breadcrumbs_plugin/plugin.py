@@ -15,6 +15,7 @@ class BreadCrumbs(BasePlugin):
     config_scheme = (
         ('log_level', config_options.Type(str, default='INFO')),
         ('delimiter', config_options.Type(str, default=' / ')),
+        ('base_url', config_options.Type(str, default='')),
     )
 
     def _setup_logger(self):
@@ -36,8 +37,21 @@ class BreadCrumbs(BasePlugin):
                     break
         return ref_location
 
+    def _get_base_url(self, config):
+        site_url = config.get('site_url', '').rstrip('/')
+        base_url = ""
+
+        if site_url:
+            print(site_url)
+            temp = site_url.replace('http://', '').replace('https://', '')
+            if "/" in temp:
+                base_url = temp.split('/', 1)[1]
+
+        return base_url
+
     def on_config(self, config, **kwargs):
         self._setup_logger()
+        self.base_url = self._get_base_url(config)
 
     def on_page_markdown(self, markdown, page, config, files, **kwargs):
         slashes = page.url.count("/")
@@ -57,7 +71,10 @@ class BreadCrumbs(BasePlugin):
             if len(breadcrumbs) > 0:
                 breadcrumbs += self.config['delimiter']
             if depth > 0:
-                breadcrumbs = breadcrumbs + f"[{ref_name}](/{ref_location}/)"
+                if self.base_url:
+                    breadcrumbs = breadcrumbs + f"[{ref_name}](/{self.base_url}/{ref_location}/)"
+                else:
+                    breadcrumbs = breadcrumbs + f"[{ref_name}](/{ref_location}/)"
 
             pos_start_substring = pos_slash + 1
             slashes -= 1
