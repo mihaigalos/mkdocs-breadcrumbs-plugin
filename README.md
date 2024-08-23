@@ -20,10 +20,5 @@ plugins:
   - search
   - mkdocs-breadcrumbs-plugin:
       log_level: "DEBUG"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
-      start_depth: 2
+      delimiter: " / "  # separator between sections
 ```
-
-## Config
-
-* `start_depth` - An int representing at which depth the plugin is running the logic. The depth represents the number of slashes in a URL path (i.e.: /home/ has depth 2). 
-
