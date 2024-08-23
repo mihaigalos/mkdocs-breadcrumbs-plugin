@@ -21,8 +21,9 @@ plugins:
   - mkdocs-breadcrumbs-plugin:
       log_level: "DEBUG"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
       delimiter: " / "  # separator between sections
+      tooltip_message: 'This is a directory - no page available.'  # Custom tooltip message
 ```
 
 > [!IMPORTANT]  
 > This plugin will recursively scan folders for the first markdown document.
-> If a subpath contains no markdown, it will not contain a hyperlink in the generated breadcrumb.
+> If a subpath contains no markdown, it will not contain a hyperlink in the generated breadcrumb. A tooltip will be displayed upon hover.

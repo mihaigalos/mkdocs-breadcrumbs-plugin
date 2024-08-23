@@ -5,6 +5,8 @@ plugins:
     - mkdocs-breadcrumbs-plugin:
         log_level: "DEBUG"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
         delimiter: " / "
+        tooltip_message: 'This is a directory - no page available.'  # Custom tooltip message if only a directory and not markdown file.
+
 theme:
   name: material
   nav: null

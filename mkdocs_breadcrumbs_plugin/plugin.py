@@ -9,6 +9,7 @@ class BreadCrumbs(BasePlugin):
         ('log_level', config_options.Type(str, default='INFO')),
         ('delimiter', config_options.Type(str, default=' / ')),
         ('base_url', config_options.Type(str, default='')),
+        ('tooltip_message', config_options.Type(str, default="Is a folder in the hierarchy - no page to navigate to.")),
     )
 
     def _setup_logger(self):
@@ -58,7 +59,9 @@ class BreadCrumbs(BasePlugin):
                 else:
                     crumb = f"[{ref_name}](/{ref_location}/)"
             else:
-                crumb = ref_name  # Non-clickable breadcrumb
+                # Tooltip for non-clickable segment using the user-defined message from config
+                tooltip_message = self.config['tooltip_message']
+                crumb = f'<span title="{tooltip_message}">{ref_name}</span>'
 
             self.logger.debug(f"page.url: {page.url} ref_name: {ref_name} ref_location: {ref_location}, slashes: {slashes}")
 
