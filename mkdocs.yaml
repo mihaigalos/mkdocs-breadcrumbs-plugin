@@ -3,6 +3,7 @@ site_name: One
 plugins:
     - search
     - mkdocs-breadcrumbs-plugin:
+        log_level: "DEBUG"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
         start_depth: 2
 theme:
   name: material
