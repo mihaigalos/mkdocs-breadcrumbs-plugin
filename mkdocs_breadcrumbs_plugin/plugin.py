@@ -2,6 +2,7 @@ import os
 import logging
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
+from urllib.parse import unquote
 
 class BreadCrumbs(BasePlugin):
 
@@ -78,11 +79,11 @@ class BreadCrumbs(BasePlugin):
                 crumb_url = f"{self.base_url}/{current_path}/"
             else:
                 crumb_url = f"/{current_path}/"
-            breadcrumbs.append(f"[{part}]({crumb_url})")
+            breadcrumbs.append(f"[{unquote(part)}]({crumb_url})")
 
         current_page = path_parts[-1].replace('.md', '')
         if current_page:
-            breadcrumbs.append(current_page)
+            breadcrumbs.append(unquote(current_page))
 
         home_breadcrumb = f"[Home]({self.base_url}/)" if self.base_url else "[Home](/)"
         if breadcrumbs:
@@ -92,6 +93,4 @@ class BreadCrumbs(BasePlugin):
             breadcrumb_str = home_breadcrumb
 
         return breadcrumb_str + "\n" + markdown
-
-
 
