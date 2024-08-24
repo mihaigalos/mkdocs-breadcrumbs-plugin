@@ -19,10 +19,7 @@ Activate the plugin in `mkdocs.yaml`:
 plugins:
   - search
   - mkdocs-breadcrumbs-plugin:
-      log_level: "DEBUG"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+      log_level: "WARNING"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
       delimiter: " / "  # separator between sections
-      tooltip_message: 'This is a directory - no page available.'  # Custom tooltip message
 ```
 
-> [!IMPORTANT]  
-> If a subpath contains no markdown, it will not contain a hyperlink in the generated breadcrumb. A tooltip will be displayed upon hover.
