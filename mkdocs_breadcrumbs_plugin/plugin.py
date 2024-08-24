@@ -9,7 +9,6 @@ class BreadCrumbs(BasePlugin):
         ('log_level', config_options.Type(str, default='INFO')),
         ('delimiter', config_options.Type(str, default=' / ')),
         ('base_url', config_options.Type(str, default='')),
-        ('tooltip_message', config_options.Type(str, default="Is a folder in the hierarchy - no page to navigate to.")),
     )
 
     def _setup_logger(self):
