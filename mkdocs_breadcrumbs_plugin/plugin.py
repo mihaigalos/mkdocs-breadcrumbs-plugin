@@ -28,9 +28,9 @@ class BreadCrumbs(BasePlugin):
         if site_url:
             parsed_url = site_url.split('//', 1)[-1]
             if "/" in parsed_url:
-                base_url = parsed_url.split('/', 1)[1]
+                base_url = "/" + parsed_url.split('/', 1)[1]
 
-        return base_url
+        return base_url.rstrip('/')
 
     def on_config(self, config, **kwargs):
         self._setup_logger()
@@ -46,7 +46,7 @@ class BreadCrumbs(BasePlugin):
         # Construct the index.md content
         relative_dir = os.path.relpath(dirpath, docs_dir)
         content_lines = [f"# Index of {relative_dir}", ""]
-        base_url_part = f"/{self.base_url}/".rstrip('/') if self.base_url else ""
+        base_url_part = f"{self.base_url}"
 
         for item in sorted(os.listdir(dirpath)):
             item_path = os.path.join(dirpath, item)
@@ -72,11 +72,11 @@ class BreadCrumbs(BasePlugin):
         path_parts = page.url.strip("/").split("/")
         accumulated_path = []
 
-        for i, part in enumerate(path_parts[:-1]):
+        for part in path_parts[:-1]:
             accumulated_path.append(part)
             current_path = "/".join(accumulated_path)
             if self.base_url:
-                crumb_url = f"/{self.base_url}/{current_path}/"
+                crumb_url = f"{self.base_url}/{current_path}/"
             else:
                 crumb_url = f"/{current_path}/"
             breadcrumbs.append(f"[{part}]({crumb_url})")
@@ -93,4 +93,6 @@ class BreadCrumbs(BasePlugin):
             breadcrumb_str = home_breadcrumb
 
         return breadcrumb_str + "\n" + markdown
+
+
 
