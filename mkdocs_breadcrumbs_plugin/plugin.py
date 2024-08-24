@@ -17,7 +17,6 @@ class BreadCrumbs(BasePlugin):
         numeric_level = getattr(logging, log_level, None)
         if not isinstance(numeric_level, int):
             raise ValueError(f'Invalid log level: {log_level}')
-        logging.basicConfig(level=numeric_level)
         self.logger.setLevel(numeric_level)
         self.logger.info(f'Log level set to {log_level}')
 
