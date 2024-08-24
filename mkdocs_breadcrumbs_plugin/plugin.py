@@ -57,7 +57,7 @@ class BreadCrumbs(BasePlugin):
                 item_name = os.path.splitext(item)[0]
                 # Link directly to the .md file without 'index.md'
                 relative_item_path = os.path.join(relative_dir, item_name).replace("\\", "/")
-                content_lines.append(f"- [{item_name}]({base_url_part}/{relative_item_path})")
+                content_lines.append(f"- [{item_name}]({base_url_part}/{relative_item_path}/)")
 
         content = "\n".join(content_lines)
         index_path = os.path.join(dirpath, 'index.md')
