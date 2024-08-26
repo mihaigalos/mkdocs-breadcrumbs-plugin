@@ -1,10 +1,10 @@
 import os
 import shutil
 import logging
+import fnmatch  # Ensure fnmatch is imported
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
 from urllib.parse import unquote
-import fnmatch
 
 class BreadCrumbs(BasePlugin):
 
@@ -12,7 +12,7 @@ class BreadCrumbs(BasePlugin):
         ('log_level', config_options.Type(str, default='INFO')),
         ('delimiter', config_options.Type(str, default=' / ')),
         ('base_url', config_options.Type(str, default='')),
-        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs', 'docs/index.md'])),
+        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs/**', 'docs/index.md'])),
         ('additional_index_folders', config_options.Type(list, default=[])),
         ('generate_home_index', config_options.Type(bool, default=True)),
     )
@@ -76,7 +76,7 @@ class BreadCrumbs(BasePlugin):
                 self.logger.info(f'Generating index pages for additional folder={folder}')
                 for dirpath, dirnames, filenames in os.walk(folder):
                     # Skip excluded paths
-                    if self._is_path_excluded(dirpath, folder):
+                    if self._is_path_excluded(dirpath):
                         self.logger.debug(f'Skipping excluded path: {dirpath}')
                         dirnames[:] = []  # Don't traverse any subdirectories
                         continue
@@ -93,10 +93,12 @@ class BreadCrumbs(BasePlugin):
                 self._cleanup_folder(folder)
 
     def _is_path_excluded(self, path):
-        self.logger.debug(f'Checking if path is excluded: path={path}')
+        relative_path = os.path.relpath(path, self.docs_dir).replace(os.sep, '/')
+        self.logger.debug(f'Checking if path is excluded: relative_path={relative_path}')
         for pattern in self.exclude_paths:
-            if pattern in path:
-                self.logger.debug(f'Excluding path={path} based on pattern={pattern}')
+            normalized_pattern = pattern.replace('docs/', '')  # Ensure patterns are normalized
+            if fnmatch.fnmatch(relative_path, normalized_pattern):
+                self.logger.debug(f'Excluding path={relative_path} based on pattern={pattern}')
                 return True
         return False
 
@@ -127,14 +129,13 @@ class BreadCrumbs(BasePlugin):
     def _copy_all_to_docs(self, base_folder, dirpath):
         """Recursively copy all files and subdirectories from the base folder to the corresponding docs directory."""
         for root, dirs, files in os.walk(dirpath):
-            relative_path = os.path.relpath(root, base_folder)
-            dest_dir = os.path.join(self.docs_dir, relative_path)
-
-            if self._is_path_excluded(root, base_folder):
+            if self._is_path_excluded(root):
                 self.logger.debug(f'Skipping excluded path: {root}')
                 dirs[:] = []  # Don't traverse any subdirectories
                 continue
 
+            relative_path = os.path.relpath(root, base_folder)
+            dest_dir = os.path.join(self.docs_dir, relative_path)
             self.logger.debug(f'Copying files from {root} to {dest_dir}')
 
             if not os.path.exists(dest_dir):
