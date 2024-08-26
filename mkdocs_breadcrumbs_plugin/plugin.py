@@ -5,7 +5,7 @@ import fnmatch
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
 from urllib.parse import unquote
-from mkdocs.structure.files import File
+from mkdocs.structure.files import File, Files
 
 class BreadCrumbs(BasePlugin):
 
@@ -65,7 +65,7 @@ class BreadCrumbs(BasePlugin):
                 for dirpath, dirnames, filenames in os.walk(folder):
                     if not self._is_path_excluded(dirpath):
                         self._generate_index_page(folder, dirpath)
-                    self._move_all_to_docs(folder, dirpath, files, config)
+                    self._copy_all_to_docs(folder, dirpath, files, config)
 
             # Generate index pages for the main docs directory with exclusions and optional home index
             for dirpath, dirnames, filenames in os.walk(self.docs_dir):
@@ -124,8 +124,8 @@ class BreadCrumbs(BasePlugin):
                 f.write(content)
             self.logger.info(f"Generated index page: {index_path}")
 
-    def _move_all_to_docs(self, base_folder, dirpath, files, config):
-        """Recursively move all files and subdirectories from the base folder to the corresponding docs directory.
+    def _copy_all_to_docs(self, base_folder, dirpath, files, config):
+        """Recursively copy all files and subdirectories from the base folder to the corresponding docs directory.
            Also update the files collection accordingly.
         """
         for root, dirs, files_list in os.walk(dirpath):
@@ -136,7 +136,7 @@ class BreadCrumbs(BasePlugin):
 
             relative_path = os.path.relpath(root, base_folder)
             dest_dir = os.path.join(self.docs_dir, relative_path)
-            self.logger.debug(f'Moving files from {root} to {dest_dir}')
+            self.logger.debug(f'Copying files from {root} to {dest_dir}')
 
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
@@ -148,16 +148,16 @@ class BreadCrumbs(BasePlugin):
                     self.logger.debug(f'Skipping excluded file: {dest_file_path}')
                     continue
                 if os.path.exists(src_file_path):  # Ensure the source file exists
-                    shutil.move(src_file_path, dest_file_path)
-                    self.logger.debug(f'Moved {src_file_path} to {dest_file_path}')
+                    shutil.copy(src_file_path, dest_file_path)
+                    self.logger.debug(f'Copied {src_file_path} to {dest_file_path}')
                     if not self._is_path_excluded(dest_file_path):
-                        file = File(
+                        page_file = File(
                             os.path.relpath(dest_file_path, self.docs_dir),
                             self.docs_dir,
-                            self.docs_dir,
-                            config['site_dir']
+                            config['site_dir'],
+                            config['use_directory_urls']
                         )
-                        files.append(file)
+                        files.append(page_file)
 
     def _cleanup_folder(self, folder):
         """Recursively delete a folder and its contents."""
