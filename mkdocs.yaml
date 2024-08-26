@@ -3,9 +3,14 @@ site_name: One
 plugins:
     - search
     - mkdocs-breadcrumbs-plugin:
-        log_level: "DEBUG"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
         delimiter: " / "
-        tooltip_message: 'This is a directory - no page available.'  # Custom tooltip message if only a directory and not markdown file.
+        log_level: "WARNING"
+        exclude_paths:
+          - docs/mkdocs/**
+        additional_index_folders:
+          - temp_dir
+        generate_home_index: false
+
 
 theme:
   name: material

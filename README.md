@@ -18,8 +18,13 @@ Activate the plugin in `mkdocs.yaml`:
 ```yaml
 plugins:
   - search
-  - mkdocs-breadcrumbs-plugin:
-      log_level: "WARNING"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
-      delimiter: " / "  # separator between sections
+    - mkdocs-breadcrumbs-plugin:
+        delimiter: " / "  # separator between sections
+        log_level: "WARNING"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+        exclude_paths:
+          - docs/mkdocs/**
+        additional_index_folders:
+          - temp_dir
+        generate_home_index: false
 ```
 
