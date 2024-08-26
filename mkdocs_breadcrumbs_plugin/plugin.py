@@ -5,6 +5,7 @@ import fnmatch
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
 from urllib.parse import unquote
+from mkdocs.structure.files import File
 
 class BreadCrumbs(BasePlugin):
 
@@ -58,6 +59,14 @@ class BreadCrumbs(BasePlugin):
         self.logger.info(f'Generating index pages for docs_dir={self.docs_dir}')
 
         try:
+            # Ensure additional_index_folders are created or moved as needed
+            for folder in self.additional_index_folders:
+                self.logger.info(f'Handling additional folders: {folder}')
+                for dirpath, dirnames, filenames in os.walk(folder):
+                    if not self._is_path_excluded(dirpath):
+                        self._generate_index_page(folder, dirpath)
+                    self._move_all_to_docs(folder, dirpath, files, config)
+
             # Generate index pages for the main docs directory with exclusions and optional home index
             for dirpath, dirnames, filenames in os.walk(self.docs_dir):
                 if self._is_path_excluded(dirpath):
@@ -70,19 +79,10 @@ class BreadCrumbs(BasePlugin):
                         self.logger.debug(f'Generating index page for path={dirpath}')
                         self._generate_index_page(self.docs_dir, dirpath)
 
-            # Generate index pages for specified additional index folders and move them to the docs directory
-            for folder in self.additional_index_folders:
-                self.logger.info(f'Generating index pages for additional folder={folder}')
-                for dirpath, dirnames, filenames in os.walk(folder):
-                    if self._is_path_excluded(dirpath):
-                        self.logger.debug(f'Skipping excluded path: {dirpath}')
-                        dirnames[:] = []  # Don't traverse any subdirectories
-                        continue
-
-                    if 'index.md' not in filenames:
-                        self.logger.debug(f'Generating index page for additional folder path={dirpath}')
-                        self._generate_index_page(folder, dirpath)
-                        self._copy_all_to_docs(folder, dirpath)
+            # Filter out excluded files from the files collection
+            files._files = [
+                file for file in files._files if not self._is_path_excluded(file.abs_src_path)
+            ]
 
         finally:
             # Cleanup additional index folders
@@ -109,25 +109,26 @@ class BreadCrumbs(BasePlugin):
 
         for item in sorted(os.listdir(dirpath)):
             item_path = os.path.join(dirpath, item)
+            item_relative_path = os.path.join(relative_dir, item).replace("\\", "/")
             if os.path.isdir(item_path):
-                relative_item_path = os.path.join(relative_dir, item).replace("\\", "/")
-                content_lines.append(f"- [{item}]({base_url_part}/{relative_item_path}/)")
+                content_lines.append(f"- [{item}]({base_url_part}/{item_relative_path}/)")
                 self._generate_index_page(docs_dir, item_path)  # Recursively generate index.md
             elif item.endswith(".md") and item != "index.md":
                 item_name = os.path.splitext(item)[0]
-                relative_item_path = os.path.join(relative_dir, item_name).replace("\\", "/")
-                content_lines.append(f"- [{item_name}]({base_url_part}/{relative_item_path}/)")
+                content_lines.append(f"- [{item_name}]({base_url_part}/{item_relative_path}/)")
 
         content = "\n".join(content_lines)
-        index_path = os.path.join(dirpath, 'index.md')
-        with open(index_path, 'w') as f:
-            f.write(content)
+        if not self._is_path_excluded(os.path.join(dirpath, 'index.md')):
+            index_path = os.path.join(dirpath, 'index.md')
+            with open(index_path, 'w') as f:
+                f.write(content)
+            self.logger.info(f"Generated index page: {index_path}")
 
-        self.logger.info(f"Generated index page: {index_path}")
-
-    def _copy_all_to_docs(self, base_folder, dirpath):
-        """Recursively copy all files and subdirectories from the base folder to the corresponding docs directory."""
-        for root, dirs, files in os.walk(dirpath):
+    def _move_all_to_docs(self, base_folder, dirpath, files, config):
+        """Recursively move all files and subdirectories from the base folder to the corresponding docs directory.
+           Also update the files collection accordingly.
+        """
+        for root, dirs, files_list in os.walk(dirpath):
             if self._is_path_excluded(root):
                 self.logger.debug(f'Skipping excluded path: {root}')
                 dirs[:] = []  # Don't traverse any subdirectories
@@ -135,29 +136,44 @@ class BreadCrumbs(BasePlugin):
 
             relative_path = os.path.relpath(root, base_folder)
             dest_dir = os.path.join(self.docs_dir, relative_path)
-            self.logger.debug(f'Copying files from {root} to {dest_dir}')
+            self.logger.debug(f'Moving files from {root} to {dest_dir}')
 
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
 
-            for file in files:
+            for file in files_list:
                 src_file_path = os.path.join(root, file)
                 dest_file_path = os.path.join(dest_dir, file)
                 if self._is_path_excluded(dest_file_path):
                     self.logger.debug(f'Skipping excluded file: {dest_file_path}')
                     continue
-                shutil.copy(src_file_path, dest_file_path)
-                self.logger.debug(f'Copied {src_file_path} to {dest_file_path}')
+                if os.path.exists(src_file_path):  # Ensure the source file exists
+                    shutil.move(src_file_path, dest_file_path)
+                    self.logger.debug(f'Moved {src_file_path} to {dest_file_path}')
+                    if not self._is_path_excluded(dest_file_path):
+                        file = File(
+                            os.path.relpath(dest_file_path, self.docs_dir),
+                            self.docs_dir,
+                            self.docs_dir,
+                            config['site_dir']
+                        )
+                        files.append(file)
 
     def _cleanup_folder(self, folder):
         """Recursively delete a folder and its contents."""
         for root, dirs, files in os.walk(folder, topdown=False):
             for name in files:
-                os.remove(os.path.join(root, name))
-                self.logger.debug(f'Deleted file {os.path.join(root, name)}')
+                try:
+                    os.remove(os.path.join(root, name))
+                    self.logger.debug(f'Deleted file {os.path.join(root, name)}')
+                except FileNotFoundError:
+                    self.logger.debug(f'File not found during deletion: {os.path.join(root, name)}')
             for name in dirs:
-                os.rmdir(os.path.join(root, name))
-                self.logger.debug(f'Deleted directory {os.path.join(root, name)}')
+                try:
+                    os.rmdir(os.path.join(root, name))
+                    self.logger.debug(f'Deleted directory {os.path.join(root, name)}')
+                except FileNotFoundError:
+                    self.logger.debug(f'Directory not found during deletion: {os.path.join(root, name)}')
 
     def on_page_markdown(self, markdown, page, config, files, **kwargs):
         breadcrumbs = []
