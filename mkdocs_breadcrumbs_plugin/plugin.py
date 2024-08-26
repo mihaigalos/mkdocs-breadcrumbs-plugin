@@ -12,7 +12,7 @@ class BreadCrumbs(BasePlugin):
         ('log_level', config_options.Type(str, default='INFO')),
         ('delimiter', config_options.Type(str, default=' / ')),
         ('base_url', config_options.Type(str, default='')),
-        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs/**', 'docs/index.md'])),
+        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs/*', 'docs/index.md'])),
         ('additional_index_folders', config_options.Type(list, default=[])),
         ('generate_home_index', config_options.Type(bool, default=True)),
     )
@@ -83,7 +83,7 @@ class BreadCrumbs(BasePlugin):
 
                     if 'index.md' not in filenames:
                         self.logger.debug(f'Generating index page for additional folder path={dirpath}')
-                        additional_page = self._generate_index_page(folder, dirpath)
+                        self._generate_index_page(folder, dirpath)
                         self._copy_all_to_docs(folder, dirpath)
 
         finally:
@@ -96,13 +96,15 @@ class BreadCrumbs(BasePlugin):
         relative_path = os.path.relpath(path, self.docs_dir).replace(os.sep, '/')
         self.logger.debug(f'Checking if path is excluded: relative_path={relative_path}')
         for pattern in self.exclude_paths:
-            normalized_pattern = pattern.replace('docs/', '')  # Ensure patterns are normalized
+            normalized_pattern = pattern.replace('docs/', '', 1) if pattern.startswith('docs/') else pattern
             if fnmatch.fnmatch(relative_path, normalized_pattern):
                 self.logger.debug(f'Excluding path={relative_path} based on pattern={pattern}')
                 return True
         return False
 
     def _generate_index_page(self, docs_dir, dirpath):
+        if self._is_path_excluded(dirpath):
+            return
         relative_dir = os.path.relpath(dirpath, docs_dir)
         content_lines = [f"# Index of {relative_dir}", ""]
         base_url_part = f"{self.base_url}"
@@ -124,7 +126,6 @@ class BreadCrumbs(BasePlugin):
             f.write(content)
 
         self.logger.info(f"Generated index page: {index_path}")
-        return index_path
 
     def _copy_all_to_docs(self, base_folder, dirpath):
         """Recursively copy all files and subdirectories from the base folder to the corresponding docs directory."""
