@@ -1,7 +1,7 @@
 import os
 import shutil
 import logging
-import fnmatch  # Ensure fnmatch is imported
+import fnmatch
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
 from urllib.parse import unquote
@@ -12,7 +12,7 @@ class BreadCrumbs(BasePlugin):
         ('log_level', config_options.Type(str, default='INFO')),
         ('delimiter', config_options.Type(str, default=' / ')),
         ('base_url', config_options.Type(str, default='')),
-        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs/*', 'docs/index.md'])),
+        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs/**', 'docs/index.md'])),
         ('additional_index_folders', config_options.Type(list, default=[])),
         ('generate_home_index', config_options.Type(bool, default=True)),
     )
@@ -60,7 +60,6 @@ class BreadCrumbs(BasePlugin):
         try:
             # Generate index pages for the main docs directory with exclusions and optional home index
             for dirpath, dirnames, filenames in os.walk(self.docs_dir):
-                # Skip excluded paths
                 if self._is_path_excluded(dirpath):
                     self.logger.debug(f'Skipping excluded path: {dirpath}')
                     dirnames[:] = []  # Don't traverse any subdirectories
@@ -75,7 +74,6 @@ class BreadCrumbs(BasePlugin):
             for folder in self.additional_index_folders:
                 self.logger.info(f'Generating index pages for additional folder={folder}')
                 for dirpath, dirnames, filenames in os.walk(folder):
-                    # Skip excluded paths
                     if self._is_path_excluded(dirpath):
                         self.logger.debug(f'Skipping excluded path: {dirpath}')
                         dirnames[:] = []  # Don't traverse any subdirectories
@@ -145,6 +143,9 @@ class BreadCrumbs(BasePlugin):
             for file in files:
                 src_file_path = os.path.join(root, file)
                 dest_file_path = os.path.join(dest_dir, file)
+                if self._is_path_excluded(dest_file_path):
+                    self.logger.debug(f'Skipping excluded file: {dest_file_path}')
+                    continue
                 shutil.copy(src_file_path, dest_file_path)
                 self.logger.debug(f'Copied {src_file_path} to {dest_file_path}')
 
@@ -187,4 +188,5 @@ class BreadCrumbs(BasePlugin):
 
         self.logger.info(f'Generated breadcrumb string: {breadcrumb_str}')
         return breadcrumb_str + "\n" + markdown
+
 
