@@ -12,9 +12,9 @@ class BreadCrumbs(BasePlugin):
         ('log_level', config_options.Type(str, default='INFO')),
         ('delimiter', config_options.Type(str, default=' / ')),
         ('base_url', config_options.Type(str, default='')),
-        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs/**'])),
+        ('exclude_paths', config_options.Type(list, default=['docs/mkdocs', 'docs/index.md'])),
         ('additional_index_folders', config_options.Type(list, default=[])),
-        ('generate_home_index', config_options.Type(bool, default=True))
+        ('generate_home_index', config_options.Type(bool, default=True)),
     )
 
     def _setup_logger(self):
@@ -32,7 +32,10 @@ class BreadCrumbs(BasePlugin):
         self.logger.info(f'Log level set to {log_level}')
 
     def _get_base_url(self, config):
-        site_url = config.get('site_url', '').rstrip('/')
+        site_url = config.get('site_url', '')
+        if not site_url:
+            return ""
+        site_url = site_url.rstrip('/')
         base_url = ""
 
         if site_url:
@@ -54,27 +57,46 @@ class BreadCrumbs(BasePlugin):
     def on_files(self, files, config, **kwargs):
         self.logger.info(f'Generating index pages for docs_dir={self.docs_dir}')
 
-        # Generate index pages for the main docs directory with exclusions and optional home index
-        for dirpath, _, filenames in os.walk(self.docs_dir):
-            if 'index.md' not in filenames and not self._is_path_excluded(dirpath, self.docs_dir):
-                if self.generate_home_index or os.path.relpath(dirpath, self.docs_dir) != '.':
-                    self.logger.debug(f'Generating index page for path={dirpath}')
-                    self._generate_index_page(self.docs_dir, dirpath)
+        try:
+            # Generate index pages for the main docs directory with exclusions and optional home index
+            for dirpath, dirnames, filenames in os.walk(self.docs_dir):
+                # Skip excluded paths
+                if self._is_path_excluded(dirpath):
+                    self.logger.debug(f'Skipping excluded path: {dirpath}')
+                    dirnames[:] = []  # Don't traverse any subdirectories
+                    continue
 
-        # Generate index pages for specified additional index folders and move them to the docs directory
-        for folder in self.additional_index_folders:
-            self.logger.info(f'Generating index pages for additional folder={folder}')
-            for dirpath, _, filenames in os.walk(folder):
                 if 'index.md' not in filenames:
-                    self.logger.debug(f'Generating index page for additional folder path={dirpath}')
-                    additional_page = self._generate_index_page(folder, dirpath)
-                    self._copy_all_to_docs(folder, dirpath)
+                    if self.generate_home_index or os.path.relpath(dirpath, self.docs_dir) != '.':
+                        self.logger.debug(f'Generating index page for path={dirpath}')
+                        self._generate_index_page(self.docs_dir, dirpath)
 
-    def _is_path_excluded(self, path, base_dir):
-        relative_path = os.path.relpath(path, base_dir)
+            # Generate index pages for specified additional index folders and move them to the docs directory
+            for folder in self.additional_index_folders:
+                self.logger.info(f'Generating index pages for additional folder={folder}')
+                for dirpath, dirnames, filenames in os.walk(folder):
+                    # Skip excluded paths
+                    if self._is_path_excluded(dirpath, folder):
+                        self.logger.debug(f'Skipping excluded path: {dirpath}')
+                        dirnames[:] = []  # Don't traverse any subdirectories
+                        continue
+
+                    if 'index.md' not in filenames:
+                        self.logger.debug(f'Generating index page for additional folder path={dirpath}')
+                        additional_page = self._generate_index_page(folder, dirpath)
+                        self._copy_all_to_docs(folder, dirpath)
+
+        finally:
+            # Cleanup additional index folders
+            for folder in self.additional_index_folders:
+                self.logger.info(f'Cleaning up additional folder={folder}')
+                self._cleanup_folder(folder)
+
+    def _is_path_excluded(self, path):
+        self.logger.debug(f'Checking if path is excluded: path={path}')
         for pattern in self.exclude_paths:
-            if fnmatch.fnmatch(relative_path, pattern):
-                self.logger.debug(f'Excluding path={relative_path} based on pattern={pattern}')
+            if pattern in path:
+                self.logger.debug(f'Excluding path={path} based on pattern={pattern}')
                 return True
         return False
 
@@ -107,6 +129,12 @@ class BreadCrumbs(BasePlugin):
         for root, dirs, files in os.walk(dirpath):
             relative_path = os.path.relpath(root, base_folder)
             dest_dir = os.path.join(self.docs_dir, relative_path)
+
+            if self._is_path_excluded(root, base_folder):
+                self.logger.debug(f'Skipping excluded path: {root}')
+                dirs[:] = []  # Don't traverse any subdirectories
+                continue
+
             self.logger.debug(f'Copying files from {root} to {dest_dir}')
 
             if not os.path.exists(dest_dir):
@@ -117,6 +145,16 @@ class BreadCrumbs(BasePlugin):
                 dest_file_path = os.path.join(dest_dir, file)
                 shutil.copy(src_file_path, dest_file_path)
                 self.logger.debug(f'Copied {src_file_path} to {dest_file_path}')
+
+    def _cleanup_folder(self, folder):
+        """Recursively delete a folder and its contents."""
+        for root, dirs, files in os.walk(folder, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+                self.logger.debug(f'Deleted file {os.path.join(root, name)}')
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+                self.logger.debug(f'Deleted directory {os.path.join(root, name)}')
 
     def on_page_markdown(self, markdown, page, config, files, **kwargs):
         breadcrumbs = []
@@ -147,5 +185,4 @@ class BreadCrumbs(BasePlugin):
 
         self.logger.info(f'Generated breadcrumb string: {breadcrumb_str}')
         return breadcrumb_str + "\n" + markdown
-
 
