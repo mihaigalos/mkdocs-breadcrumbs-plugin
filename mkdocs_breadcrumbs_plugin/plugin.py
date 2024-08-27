@@ -5,7 +5,7 @@ import fnmatch
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
 from urllib.parse import unquote
-from mkdocs.structure.files import File, Files
+from mkdocs.structure.files import File
 
 class BreadCrumbs(BasePlugin):
 
@@ -74,10 +74,14 @@ class BreadCrumbs(BasePlugin):
                     dirnames[:] = []  # Don't traverse any subdirectories
                     continue
 
-                if 'index.md' not in filenames:
-                    if self.generate_home_index or os.path.relpath(dirpath, self.docs_dir) != '.':
-                        self.logger.debug(f'Generating index page for path={dirpath}')
-                        self._generate_index_page(self.docs_dir, dirpath)
+                # Ensure docs/index.md is handled properly
+                if 'index.md' not in filenames and not self.generate_home_index:
+                    self.logger.debug(f'Generating home index page for docs_dir')
+                    self._generate_index_page(self.docs_dir, self.docs_dir)
+
+                if 'index.md' not in filenames or os.path.relpath(dirpath, self.docs_dir) != '.':
+                    self.logger.debug(f'Generating index page for path={dirpath}')
+                    self._generate_index_page(self.docs_dir, dirpath)
 
             # Filter out excluded files from the files collection
             files._files = [
