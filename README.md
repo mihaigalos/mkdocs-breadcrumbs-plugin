@@ -22,7 +22,8 @@ plugins:
         delimiter: " / "  # separator between sections
         log_level: "WARNING"  # "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
         exclude_paths:
-          - docs/mkdocs
+          - "docs/mkdocs/**"
+          - "docs/mkdocs"   # avoid generating index.md
         additional_index_folders:
           - temp_dir
         generate_home_index: false
