@@ -57,38 +57,31 @@ class BreadCrumbs(BasePlugin):
     def on_files(self, files, config, **kwargs):
         self.logger.info(f'Generating index pages for docs_dir={self.docs_dir}')
 
-        try:
-            # Generate index pages for the main docs directory with exclusions and optional home index
-            for dirpath, dirnames, filenames in os.walk(self.docs_dir):
+        # Generate index pages for the main docs directory with exclusions and optional home index
+        for dirpath, dirnames, filenames in os.walk(self.docs_dir):
+            if self._is_path_excluded(dirpath):
+                self.logger.debug(f'Skipping excluded path: {dirpath}')
+                dirnames[:] = []  # Don't traverse any subdirectories
+                continue
+
+            if 'index.md' not in filenames:
+                if self.generate_home_index or os.path.relpath(dirpath, self.docs_dir) != '.':
+                    self.logger.debug(f'Generating index page for path={dirpath}')
+                    self._generate_index_page(self.docs_dir, dirpath)
+
+        # Generate index pages for specified additional index folders and move them to the docs directory
+        for folder in self.additional_index_folders:
+            self.logger.info(f'Generating index pages for additional folder={folder}')
+            for dirpath, dirnames, filenames in os.walk(folder):
                 if self._is_path_excluded(dirpath):
                     self.logger.debug(f'Skipping excluded path: {dirpath}')
                     dirnames[:] = []  # Don't traverse any subdirectories
                     continue
 
                 if 'index.md' not in filenames:
-                    if self.generate_home_index or os.path.relpath(dirpath, self.docs_dir) != '.':
-                        self.logger.debug(f'Generating index page for path={dirpath}')
-                        self._generate_index_page(self.docs_dir, dirpath)
-
-            # Generate index pages for specified additional index folders and move them to the docs directory
-            for folder in self.additional_index_folders:
-                self.logger.info(f'Generating index pages for additional folder={folder}')
-                for dirpath, dirnames, filenames in os.walk(folder):
-                    if self._is_path_excluded(dirpath):
-                        self.logger.debug(f'Skipping excluded path: {dirpath}')
-                        dirnames[:] = []  # Don't traverse any subdirectories
-                        continue
-
-                    if 'index.md' not in filenames:
-                        self.logger.debug(f'Generating index page for additional folder path={dirpath}')
-                        self._generate_index_page(folder, dirpath)
-                        self._copy_all_to_docs(folder, dirpath)
-
-        finally:
-            # Cleanup additional index folders
-            for folder in self.additional_index_folders:
-                self.logger.info(f'Cleaning up additional folder={folder}')
-                self._cleanup_folder(folder)
+                    self.logger.debug(f'Generating index page for additional folder path={dirpath}')
+                    self._generate_index_page(folder, dirpath)
+                    self._copy_all_to_docs(folder, dirpath)
 
     def _is_path_excluded(self, path):
         relative_path = os.path.relpath(path, self.docs_dir).replace(os.sep, '/')
@@ -146,8 +139,11 @@ class BreadCrumbs(BasePlugin):
                 if self._is_path_excluded(dest_file_path):
                     self.logger.debug(f'Skipping excluded file: {dest_file_path}')
                     continue
-                shutil.copy(src_file_path, dest_file_path)
-                self.logger.debug(f'Copied {src_file_path} to {dest_file_path}')
+                if os.path.exists(dest_file_path):
+                    self.logger.debug(f'Skipping already present file: {dest_file_path}')
+                else:
+                    shutil.copy(src_file_path, dest_file_path)
+                    self.logger.debug(f'Copied {src_file_path} to {dest_file_path}')
 
     def _cleanup_folder(self, folder):
         """Recursively delete a folder and its contents."""
