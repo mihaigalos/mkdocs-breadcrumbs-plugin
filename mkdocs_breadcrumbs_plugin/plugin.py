@@ -15,6 +15,8 @@ class BreadCrumbs(BasePlugin):
         ('exclude_paths', config_options.Type(list, default=['docs/mkdocs/**', 'docs/index.md'])),
         ('additional_index_folders', config_options.Type(list, default=[])),
         ('generate_home_index', config_options.Type(bool, default=True)),
+        ('use_page_titles', config_options.Type(bool, default=False)),
+        ('home_text', config_options.Type(str, default='Home')),
     )
 
     def _setup_logger(self):
@@ -167,15 +169,22 @@ class BreadCrumbs(BasePlugin):
                 crumb_url = f"{self.base_url}/{current_path}/"
             else:
                 crumb_url = f"/{current_path}/"
-            breadcrumbs.append(f"[{unquote(part)}]({crumb_url})")
-            self.logger.debug(f'Added breadcrumb: {unquote(part)} with URL: {crumb_url}')
+            
+            if self.config['use_page_titles']:
+                title = page.meta.get('title', unquote(part))
+            else:
+                title = unquote(part)
+                
+            breadcrumbs.append(f"[{title}]({crumb_url})")
+            self.logger.debug(f'Added breadcrumb: {title} with URL: {crumb_url}')
 
         current_page = path_parts[-1].replace('.md', '')
         if current_page:
-            breadcrumbs.append(unquote(current_page))
-            self.logger.debug(f'Added current page breadcrumb: {unquote(current_page)}')
+            title = page.meta.get('title', unquote(current_page)) if self.config['use_page_titles'] else unquote(current_page)
+            breadcrumbs.append(title)
+            self.logger.debug(f'Added current page breadcrumb: {title}')
 
-        home_breadcrumb = f"[Home]({self.base_url}/)" if self.base_url else "[Home](/)"
+        home_breadcrumb = f"[{self.config['home_text']}]({self.base_url}/)" if self.base_url else f"[{self.config['home_text']}](/)"
         if breadcrumbs:
             breadcrumb_str = self.config['delimiter'].join(breadcrumbs)
             breadcrumb_str = home_breadcrumb + self.config['delimiter'] + breadcrumb_str
@@ -184,5 +193,3 @@ class BreadCrumbs(BasePlugin):
 
         self.logger.info(f'Generated breadcrumb string: {breadcrumb_str}')
         return breadcrumb_str + "\n" + markdown
-
-
