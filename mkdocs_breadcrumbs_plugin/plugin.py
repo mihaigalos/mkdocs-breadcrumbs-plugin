@@ -181,7 +181,6 @@ class BreadCrumbs(BasePlugin):
                 # If it's the last item AND it's the actual page, skip adding it
                 # because you only want up to the parent section in the breadcrumb.
                 if is_last and part_page.is_page:
-                    # This is the final page ("Device Link Groups"), skip in breadcrumb
                     continue
 
                 # If it's a page, add it as a link
