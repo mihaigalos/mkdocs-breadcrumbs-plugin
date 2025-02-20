@@ -26,5 +26,7 @@ plugins:
       additional_index_folders:
         - temp_dir
       generate_home_index: false
+      use_page_titles: true # use page title instead of path in breadcrumbs
+      home_text: "Home"
 ```
 
