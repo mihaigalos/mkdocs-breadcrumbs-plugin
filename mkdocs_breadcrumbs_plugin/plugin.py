@@ -159,53 +159,11 @@ class BreadCrumbs(BasePlugin):
 
     def on_page_markdown(self, markdown, page, config, files, **kwargs):
         breadcrumbs = []
-        accumulated_path = []
 
         if self.config['use_page_titles']:
-            # Collect this page and all parents up to (but not including) the homepage
-            current_page = page
-            while current_page and getattr(current_page, 'is_homepage', False) is False:
-                accumulated_path.insert(0, current_page)
-                current_page = current_page.parent
-
-            # If there is nothing but the homepage, just return normal markdown
-            if not accumulated_path:
-                home_breadcrumb = f"[{self.config['home_text']}]({self.base_url}/)" if self.base_url else f"[{self.config['home_text']}](/)"
-                return home_breadcrumb + "\n" + markdown
-
-            # We’ll iterate through all items in the chain,
-            # but handle the last item carefully.
-            for i, part_page in enumerate(accumulated_path):
-                is_last = (i == len(accumulated_path) - 1)
-
-                # If it's the last item AND it's the actual page, skip adding it
-                # because you only want up to the parent section in the breadcrumb.
-                if is_last and part_page.is_page:
-                    continue
-
-                # If it's a page, add it as a link
-                if part_page.is_page:
-                    crumb_url = (f"{self.base_url}/{part_page.url}"
-                                if self.base_url else f"/{part_page.url}")
-                    breadcrumbs.append(f"[{part_page.title}]({crumb_url})")
-
-                # If it's a section, add it as plain text (no link)
-                elif part_page.is_section:
-                    breadcrumbs.append(part_page.title)
+            breadcrumbs = self._generate_breadcrumbs_from_page_titles(page)
         else:
-            # Show/link to the URL path splits
-            path_parts = page.url.strip("/").split("/")
-            for part in path_parts[:-1]:
-                accumulated_path.append(part)
-                current_path = "/".join(accumulated_path)
-                if self.base_url:
-                    crumb_url = f"{self.base_url}/{current_path}/"
-                else:
-                    crumb_url = f"/{current_path}/"
-                
-                title = unquote(part)
-                breadcrumbs.append(f"[{title}]({crumb_url})")
-                self.logger.debug(f'Added breadcrumb: {title} with URL: {crumb_url}')
+            breadcrumbs = self._generate_breadcrumbs_from_url(page)
 
         # Always prepend "Home" crumb
         home_breadcrumb = (
@@ -221,3 +179,58 @@ class BreadCrumbs(BasePlugin):
 
         self.logger.info(f'Generated breadcrumb string: {breadcrumb_str}')
         return breadcrumb_str + "\n" + markdown
+
+    def _generate_breadcrumbs_from_page_titles(self, page):
+        breadcrumbs = []
+        accumulated_path = []
+
+        # Collect this page and all parents up to (but not including) the homepage
+        current_page = page
+        while current_page and getattr(current_page, 'is_homepage', False) is False:
+            accumulated_path.insert(0, current_page)
+            current_page = current_page.parent
+
+        # If there is nothing but the homepage, just return normal markdown
+        if not accumulated_path:
+            home_breadcrumb = f"[{self.config['home_text']}]({self.base_url}/)" if self.base_url else f"[{self.config['home_text']}](/)"
+            return [home_breadcrumb]
+
+        # We’ll iterate through all items in the chain,
+        # but handle the last item carefully.
+        for i, part_page in enumerate(accumulated_path):
+            is_last = (i == len(accumulated_path) - 1)
+
+            # If it's the last item AND it's the actual page, skip adding it
+            # because you only want up to the parent section in the breadcrumb.
+            if is_last and part_page.is_page:
+                continue
+
+            # If it's a page, add it as a link
+            if part_page.is_page:
+                crumb_url = (f"{self.base_url}/{part_page.url}"
+                            if self.base_url else f"/{part_page.url}")
+                breadcrumbs.append(f"[{part_page.title}]({crumb_url})")
+
+            # If it's a section, add it as plain text (no link)
+            elif part_page.is_section:
+                breadcrumbs.append(part_page.title)
+        return breadcrumbs
+
+    def _generate_breadcrumbs_from_url(self, page):
+        breadcrumbs = []
+        accumulated_path = []
+
+        # Show/link to the URL path splits
+        path_parts = page.url.strip("/").split("/")
+        for part in path_parts[:-1]:
+            accumulated_path.append(part)
+            current_path = "/".join(accumulated_path)
+            if self.base_url:
+                crumb_url = f"{self.base_url}/{current_path}/"
+            else:
+                crumb_url = f"/{current_path}/"
+            
+            title = unquote(part)
+            breadcrumbs.append(f"[{title}]({crumb_url})")
+            self.logger.debug(f'Added breadcrumb: {title} with URL: {crumb_url}')
+        return breadcrumbs
