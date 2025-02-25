@@ -34,17 +34,11 @@ class BreadCrumbs(BasePlugin):
         self.logger.info(f'Log level set to {log_level}')
 
     def _get_base_url(self, config):
-        site_url = config.get('site_url', '')
+        site_url = config.get('site_url', '').rstrip('/')
         if not site_url:
             return ""
-        site_url = site_url.rstrip('/')
-        base_url = ""
-
-        if site_url:
-            parsed_url = site_url.split('//', 1)[-1]
-            if "/" in parsed_url:
-                base_url = "/" + parsed_url.split('/', 1)[1]
-
+        parsed_url = site_url.split('//', 1)[-1]
+        base_url = "/" + parsed_url.split('/', 1)[1] if "/" in parsed_url else ""
         return base_url.rstrip('/')
 
     def on_config(self, config, **kwargs):
@@ -58,32 +52,23 @@ class BreadCrumbs(BasePlugin):
 
     def on_files(self, files, config, **kwargs):
         self.logger.info(f'Generating index pages for docs_dir={self.docs_dir}')
+        self._generate_index_pages(self.docs_dir)
+        for folder in self.additional_index_folders:
+            self.logger.info(f'Generating index pages for additional folder={folder}')
+            self._generate_index_pages(folder, move_to_docs=True)
 
-        # Generate index pages for the main docs directory with exclusions and optional home index
-        for dirpath, dirnames, filenames in os.walk(self.docs_dir):
+    def _generate_index_pages(self, base_folder, move_to_docs=False):
+        for dirpath, dirnames, filenames in os.walk(base_folder):
             if self._is_path_excluded(dirpath):
                 self.logger.debug(f'Skipping excluded path: {dirpath}')
                 dirnames[:] = []  # Don't traverse any subdirectories
                 continue
 
             if 'index.md' not in filenames:
-                if self.generate_home_index or os.path.relpath(dirpath, self.docs_dir) != '.':
-                    self.logger.debug(f'Generating index page for path={dirpath}')
-                    self._generate_index_page(self.docs_dir, dirpath)
-
-        # Generate index pages for specified additional index folders and move them to the docs directory
-        for folder in self.additional_index_folders:
-            self.logger.info(f'Generating index pages for additional folder={folder}')
-            for dirpath, dirnames, filenames in os.walk(folder):
-                if self._is_path_excluded(dirpath):
-                    self.logger.debug(f'Skipping excluded path: {dirpath}')
-                    dirnames[:] = []  # Don't traverse any subdirectories
-                    continue
-
-                if 'index.md' not in filenames:
-                    self.logger.debug(f'Generating index page for additional folder path={dirpath}')
-                    self._generate_index_page(folder, dirpath)
-                    self._copy_all_to_docs(folder, dirpath)
+                self.logger.debug(f'Generating index page for path={dirpath}')
+                self._generate_index_page(base_folder, dirpath)
+                if move_to_docs:
+                    self._copy_all_to_docs(base_folder, dirpath)
 
     def _is_path_excluded(self, path):
         relative_path = os.path.relpath(path, self.docs_dir).replace(os.sep, '/')
@@ -158,38 +143,57 @@ class BreadCrumbs(BasePlugin):
                 self.logger.debug(f'Deleted directory {os.path.join(root, name)}')
 
     def on_page_markdown(self, markdown, page, config, files, **kwargs):
-        breadcrumbs = []
-        path_parts = page.url.strip("/").split("/")
-        accumulated_path = []
-
-        for part in path_parts[:-1]:
-            accumulated_path.append(part)
-            current_path = "/".join(accumulated_path)
-            if self.base_url:
-                crumb_url = f"{self.base_url}/{current_path}/"
-            else:
-                crumb_url = f"/{current_path}/"
-            
-            if self.config['use_page_titles']:
-                title = page.meta.get('title', unquote(part))
-            else:
-                title = unquote(part)
-                
-            breadcrumbs.append(f"[{title}]({crumb_url})")
-            self.logger.debug(f'Added breadcrumb: {title} with URL: {crumb_url}')
-
-        current_page = path_parts[-1].replace('.md', '')
-        if current_page:
-            title = page.meta.get('title', unquote(current_page)) if self.config['use_page_titles'] else unquote(current_page)
-            breadcrumbs.append(title)
-            self.logger.debug(f'Added current page breadcrumb: {title}')
-
         home_breadcrumb = f"[{self.config['home_text']}]({self.base_url}/)" if self.base_url else f"[{self.config['home_text']}](/)"
-        if breadcrumbs:
-            breadcrumb_str = self.config['delimiter'].join(breadcrumbs)
-            breadcrumb_str = home_breadcrumb + self.config['delimiter'] + breadcrumb_str
-        else:
+        
+        # For homepage, only include the home link without additional breadcrumbs
+        if getattr(page, 'is_homepage', False):
             breadcrumb_str = home_breadcrumb
-
+        else:
+            # For other pages, generate and include additional breadcrumbs
+            breadcrumbs = self._generate_breadcrumbs(page)
+            breadcrumb_str = home_breadcrumb + (self.config['delimiter'] + self.config['delimiter'].join(breadcrumbs) if breadcrumbs else "")
+        
         self.logger.info(f'Generated breadcrumb string: {breadcrumb_str}')
         return breadcrumb_str + "\n" + markdown
+
+    def _generate_breadcrumbs(self, page):
+        if self.config['use_page_titles']:
+            return self._generate_breadcrumbs_from_page_titles(page)
+        return self._generate_breadcrumbs_from_url(page)
+
+    def _generate_breadcrumbs_from_page_titles(self, page):
+        breadcrumbs = []
+        accumulated_path = []
+
+        current_page = page
+        while current_page and getattr(current_page, 'is_homepage', False) is False:
+            accumulated_path.insert(0, current_page)
+            current_page = current_page.parent
+
+        if not accumulated_path:
+            return []
+
+        for i, part_page in enumerate(accumulated_path):
+            is_last = (i == len(accumulated_path) - 1)
+            if is_last and part_page.is_page:
+                continue
+            if part_page.is_page:
+                crumb_url = f"{self.base_url}/{part_page.url}" if self.base_url else f"/{part_page.url}"
+                breadcrumbs.append(f"[{part_page.title}]({crumb_url})")
+            elif part_page.is_section:
+                breadcrumbs.append(part_page.title)
+        return breadcrumbs
+
+    def _generate_breadcrumbs_from_url(self, page):
+        breadcrumbs = []
+        accumulated_path = []
+
+        path_parts = page.url.strip("/").split("/")
+        for part in path_parts:
+            accumulated_path.append(part)
+            current_path = "/".join(accumulated_path)
+            crumb_url = f"{self.base_url}/{current_path}" if self.base_url else f"/{current_path}"
+            title = unquote(part)
+            breadcrumbs.append(f"[{title}]({crumb_url})")
+            self.logger.debug(f'Added breadcrumb: {title} with URL: {crumb_url}')
+        return breadcrumbs
