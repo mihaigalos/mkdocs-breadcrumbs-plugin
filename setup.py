@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
@@ -19,6 +20,18 @@ setup(
         'mkdocs>=1.0.4',
         'mkdocs-material'
     ],
+    extras_require={
+        'test': [
+            'pytest',
+            'pytest-cov',
+        ],
+        'dev': [
+            'pytest',
+            'pytest-cov',
+            'flake8',
+            'black',
+        ],
+    },
     classifiers=[
         "Operating System :: OS Independent",
         "Programming Language :: Python",
@@ -34,5 +47,6 @@ setup(
         'mkdocs.plugins': [
             'mkdocs-breadcrumbs-plugin = mkdocs_breadcrumbs_plugin.plugin:BreadCrumbs'
         ]
-    }
+    },
+    # test_suite parameter removed as it's deprecated in newer setuptools
 )
