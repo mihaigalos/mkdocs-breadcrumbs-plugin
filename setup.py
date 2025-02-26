@@ -48,5 +48,4 @@ setup(
             'mkdocs-breadcrumbs-plugin = mkdocs_breadcrumbs_plugin.plugin:BreadCrumbs'
         ]
     },
-    # test_suite parameter removed as it's deprecated in newer setuptools
 )
