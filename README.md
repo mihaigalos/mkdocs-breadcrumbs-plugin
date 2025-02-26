@@ -15,6 +15,7 @@ pip install mkdocs-breadcrumbs-plugin
 ```
 
 Activate the plugin in `mkdocs.yaml`:
+
 ```yaml
 plugins:
   - mkdocs-breadcrumbs-plugin:
@@ -30,3 +31,12 @@ plugins:
       home_text: "Home"
 ```
 
+## Development
+
+### Running Tests
+
+To run the tests, use the following command:
+
+```bash
+pytest
+```
