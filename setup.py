@@ -5,31 +5,28 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='mkdocs-breadcrumbs-plugin',
-    version='0.1.12',
-    description='Location-based breadcrumbs plugin for mkdocs.',
+    name="mkdocs-breadcrumbs-plugin",
+    version="0.1.12",
+    description="Location-based breadcrumbs plugin for mkdocs.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    keywords='mkdocs plugin',
-    url='https://github.com/mihaigalos/mkdocs-breadcrumbs-plugin',
-    author='Mihai Galos',
-    author_email='mihai@galos.one',
-    license='MIT',
-    python_requires='>=3.8',
-    install_requires=[
-        'mkdocs>=1.0.4',
-        'mkdocs-material'
-    ],
+    keywords="mkdocs plugin",
+    url="https://github.com/mihaigalos/mkdocs-breadcrumbs-plugin",
+    author="Mihai Galos",
+    author_email="mihai@galos.one",
+    license="MIT",
+    python_requires=">=3.8",
+    install_requires=["mkdocs>=1.0.4", "mkdocs-material"],
     extras_require={
-        'test': [
-            'pytest',
-            'pytest-cov',
+        "test": [
+            "pytest",
+            "pytest-cov",
         ],
-        'dev': [
-            'pytest',
-            'pytest-cov',
-            'flake8',
-            'black',
+        "dev": [
+            "pytest",
+            "pytest-cov",
+            "flake8",
+            "black",
         ],
     },
     classifiers=[
@@ -44,8 +41,8 @@ setup(
     ],
     packages=find_packages(),
     entry_points={
-        'mkdocs.plugins': [
-            'mkdocs-breadcrumbs-plugin = mkdocs_breadcrumbs_plugin.plugin:BreadCrumbs'
+        "mkdocs.plugins": [
+            "mkdocs-breadcrumbs-plugin = mkdocs_breadcrumbs_plugin.plugin:BreadCrumbs"
         ]
     },
 )
