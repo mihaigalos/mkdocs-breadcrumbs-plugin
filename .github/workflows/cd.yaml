@@ -33,6 +33,14 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
 
+    - name: tag
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "foo@bar.bla"
+
+        version=$(cat setup.py | grep version | head -1 | cut -d ',' -f1 | cut -d'=' -f 2 | tr -d '"')
+        git tag -f $version && git push --tags
+
     # See https://docs.pypi.org/trusted-publishers/using-a-publisher/
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
