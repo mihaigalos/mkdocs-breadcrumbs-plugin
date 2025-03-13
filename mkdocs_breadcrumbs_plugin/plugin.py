@@ -4,7 +4,6 @@ import logging
 import fnmatch
 from mkdocs.config import config_options
 from mkdocs.plugins import BasePlugin
-from urllib.parse import unquote
 
 
 class BreadCrumbs(BasePlugin):
