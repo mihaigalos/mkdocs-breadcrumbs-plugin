@@ -229,8 +229,15 @@ class BreadCrumbs(BasePlugin):
         breadcrumbs = []
         accumulated_path = []
 
+        # get all titles from current page and its ancestor pages
+        page_titles = []
+        current_page = page
+        while current_page and getattr(current_page, "is_homepage", False) is False:
+            page_titles.insert(0, current_page.title)
+            current_page = current_page.parent
+
         path_parts = page.url.strip("/").split("/")
-        for part in path_parts:
+        for part, title in zip(path_parts[:-1], page_titles[:-1]):
             accumulated_path.append(part)
             current_path = "/".join(accumulated_path)
             crumb_url = (
@@ -238,7 +245,10 @@ class BreadCrumbs(BasePlugin):
                 if self.base_url
                 else f"/{current_path}"
             )
-            title = unquote(part)
             breadcrumbs.append(f"[{title}]({crumb_url})")
             self.logger.debug(f"Added breadcrumb: {title} with URL: {crumb_url}")
+
+        # last breadcrumb cannot be clicked
+        breadcrumbs.append(f"{page_titles[-1]}")
+
         return breadcrumbs
