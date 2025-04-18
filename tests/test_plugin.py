@@ -20,7 +20,7 @@ class TestBreadcrumbsPlugin(unittest.TestCase):
         # Mock MkDocs config
         self.mkdocs_config = {
             "site_name": "Test Site",
-            "site_url": "http://example.com/",
+            "site_url": "http://example.com/doc/",
             "docs_dir": "docs",
         }
 
@@ -28,7 +28,6 @@ class TestBreadcrumbsPlugin(unittest.TestCase):
         self.default_config = {
             "home_text": "Home",
             "delimiter": " / ",
-            "base_url": "",
             "exclude_paths": ["docs/mkdocs/**", "docs/index.md"],
             "additional_index_folders": [],
             "generate_home_index": True,
@@ -52,6 +51,21 @@ class TestBreadcrumbsPlugin(unittest.TestCase):
     def tearDown(self):
         # Re-enable logging
         logging.disable(logging.NOTSET)
+
+    def test_on_config_get_base_url_null(self):
+        """Test _get_base_url."""
+        self.plugin.config = deepcopy(self.default_config)
+        self.plugin.on_config(self.mkdocs_config)
+        self.assertEqual(self.plugin.base_url, "")
+
+    def test_on_config_get_base_url(self):
+        """Test _get_base_url."""
+        # Configure with use_page_titles=True
+        custom_config = deepcopy(self.default_config)
+        custom_config["use_page_titles"] = True
+        self.plugin.config = custom_config
+        self.plugin.on_config(self.mkdocs_config)
+        self.assertEqual(self.plugin.base_url, "/doc")
 
     def test_on_page_markdown(self):
         """Test plugin behavior with default configuration."""

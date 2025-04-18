@@ -40,9 +40,11 @@ class BreadCrumbs(BasePlugin):
         self.logger.info(f"Log level set to {log_level}")
 
     def _get_base_url(self, config):
-        site_url = config.get("site_url", "").rstrip("/")
+        site_url = config.get("site_url", "")
         if not site_url:
             return ""
+        if site_url.endswith("/"):
+            site_url = site_url.rstrip("/")
         parsed_url = site_url.split("//", 1)[-1]
         base_url = "/" + parsed_url.split("/", 1)[1] if "/" in parsed_url else ""
         return base_url.rstrip("/")
