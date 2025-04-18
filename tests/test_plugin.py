@@ -20,7 +20,7 @@ class TestBreadcrumbsPlugin(unittest.TestCase):
         # Mock MkDocs config
         self.mkdocs_config = {
             "site_name": "Test Site",
-            "site_url": "http://example.com/doc/",
+            "site_url": "http://example.com/",
             "docs_dir": "docs",
         }
 
@@ -64,6 +64,7 @@ class TestBreadcrumbsPlugin(unittest.TestCase):
         custom_config = deepcopy(self.default_config)
         custom_config["use_page_titles"] = True
         self.plugin.config = custom_config
+        self.mkdocs_config["site_url"] = "http://example.com/doc/"
         self.plugin.on_config(self.mkdocs_config)
         self.assertEqual(self.plugin.base_url, "/doc")
 
